@@ -1094,6 +1094,7 @@ def test_outdated_install_warns(app_stub, monkeypatch):
     async def outdated():
         return False, "0.1.0", "9.9.9"
 
+    monkeypatch.setenv("HAIKU_RAG_CHECK_VERSION", "1")
     monkeypatch.setattr("haiku.rag.cli.is_up_to_date", outdated)
 
     result = runner.invoke(cli, ["list"] + DB_ARGS)
@@ -1105,10 +1106,29 @@ def test_outdated_install_warns(app_stub, monkeypatch):
     app_stub.list_documents.assert_called_once()
 
 
+def test_version_check_makes_no_request_by_default(app_stub, monkeypatch):
+    """Local-only policy: no PyPI request unless HAIKU_RAG_CHECK_VERSION=1."""
+    monkeypatch.delenv("HAIKU_RAG_CHECK_VERSION", raising=False)
+    calls = []
+
+    async def spy():
+        calls.append(1)
+        return False, "0.1.0", "9.9.9"
+
+    monkeypatch.setattr("haiku.rag.cli.is_up_to_date", spy)
+
+    result = runner.invoke(cli, ["list"] + DB_ARGS)
+
+    assert result.exit_code == 0, result.output
+    assert calls == []
+    assert "outdated" not in result.stderr
+
+
 def test_up_to_date_install_says_nothing(app_stub, monkeypatch):
     async def current():
         return True, "9.9.9", "9.9.9"
 
+    monkeypatch.setenv("HAIKU_RAG_CHECK_VERSION", "1")
     monkeypatch.setattr("haiku.rag.cli.is_up_to_date", current)
 
     result = runner.invoke(cli, ["list"] + DB_ARGS)
@@ -1123,6 +1143,7 @@ def test_a_failing_version_check_does_not_block_the_cli(app_stub, monkeypatch):
     async def boom():
         raise RuntimeError("no network")
 
+    monkeypatch.setenv("HAIKU_RAG_CHECK_VERSION", "1")
     monkeypatch.setattr("haiku.rag.cli.is_up_to_date", boom)
 
     result = runner.invoke(cli, ["list"] + DB_ARGS)

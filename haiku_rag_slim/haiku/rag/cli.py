@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import sys
 import warnings
 from importlib.metadata import version
@@ -119,6 +120,8 @@ def resolve_scope(
 
 async def check_version():
     """Check if haiku.rag is up to date and show warning if not."""
+    if os.environ.get("HAIKU_RAG_CHECK_VERSION") != "1":
+        return  # anotw fork: opt-in only, no outbound PyPI call by default
     up_to_date, current_version, latest_version = await is_up_to_date()
     if not up_to_date:
         typer.echo(
